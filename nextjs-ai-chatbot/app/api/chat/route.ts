@@ -1,51 +1,24 @@
-// import { NextResponse } from "next/server";
-// import ai from "@/lib/gemini";
+import { streamText, convertToModelMessages } from "ai";
+import { model } from "@/lib/ai";
 
-// export async function GET() {
-//   try {
-//     const models = await ai.models.list();
+export const maxDuration = 30;
 
-//     return NextResponse.json(models);
-//   } catch (error) {
-//     console.error(error);
-
-//     return NextResponse.json(
-//       {
-//         error,
-//       },
-//       { status: 500 }
-//     );
-//   }
-// }
-
-import { NextRequest, NextResponse } from "next/server";
-import ai from "@/lib/gemini";
-
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { message } = await request.json();
+    const { messages } = await req.json();
 
-    if (!message) {
-      return NextResponse.json(
-        { error: "Message is required" },
-        { status: 400 }
-      );
-    }
-
-    const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
-      contents: message,
+    const result = streamText({
+      model,
+      messages: await convertToModelMessages(messages),
     });
 
-    return NextResponse.json({
-      reply: response.text,
-    });
+    return result.toUIMessageStreamResponse();
   } catch (error) {
-    console.error("Gemini Error:", error);
+    console.error(error);
 
-    return NextResponse.json(
+    return Response.json(
       {
-        error: "Something went wrong",
+        error: error instanceof Error ? error.message : "Failed to generate response",
       },
       {
         status: 500,
